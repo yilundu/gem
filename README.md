@@ -1,12 +1,13 @@
 # Learning Signal-Agnostic Manifolds of Neural Fields
 
 This is the uncleaned code for the paper Learning Signal-Agnostic Manifolds of Neural Fields. The
-code will be cleaned shortly.
+cleaned code will be cleaned shortly.
 
 
 ## Downloading Data
 
-Please utilize the following link to download the underlying models and data used in the paper.
+Please utilize the following [link](https://www.dropbox.com/s/601riehyvyw8uz2/data.tar.gz?dl=0) to download the underlying models and data used in the paper and extract it in the root directory. Please download
+the 3D shape dataset from [here](https://github.com/czq142857/IM-NET).
 
 
 ## Demo

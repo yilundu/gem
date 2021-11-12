@@ -1,11 +1,13 @@
 import h5py
 import config
+from tqdm import tqdm
 import cv2
 import imageio
 from imageio import imread, imwrite
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 from skimage.transform import resize
+from multiprocessing.pool import Pool
 import random
 import pickle as pck
 from glob import glob
@@ -36,8 +38,10 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import Resize, Compose, ToTensor, Normalize, CenterCrop,ToPILImage
 import torchvision
+from torchvision.transforms import functional as trans_fn
 
 from sklearn.model_selection import train_test_split
+from multiprocessing import Pool
 
 
 class MovingMNIST(data.Dataset):
@@ -569,52 +573,17 @@ class CelebAHQ(torch.utils.data.Dataset):
     def __init__(self, sidelength=1024, cache=None, cache_mask=None, split='train', subset=None):
         self.name = 'celebahq'
         self.channels = 3
-        self.im_paths = sorted(glob('/data/vision/billf/scratch/yilundu/dataset/celebahq/data128x128/*.jpg'))
-        # self.path = "/datasets01/celebAHQ/081318/imgHQ{:05}.npy"
-        # self.mgrid = utils.get_mgrid(sidelength, dim=2)
-        self.sidelength = sidelength
-        # self.im_paths = sorted(glob('/om2/user/yilundu/datasets/data128x128/*.jpg'))
+        self.im_size = 64
+        # self.im_paths = sorted(glob('/data/vision/billf/scratch/yilundu/dataset/celebahq/data128x128/*.jpg'))
 
-        cache = np.ctypeslib.as_array(cache.get_obj())
-        cache = cache.reshape(30000, 128, 128, 3)
-        cache = cache.astype("uint8")
-        self.cache = torch.from_numpy(cache)
-        self.im_size = sidelength
-
-        cache_mask = np.ctypeslib.as_array(cache_mask.get_obj())
-        cache_mask = cache_mask.reshape(30000)
-        cache_mask = cache_mask.astype("uint8")
-        self.cache_mask = torch.from_numpy(cache_mask)
-
-        self.split = split
+        if split == "train":
+            self.data = np.load("/home/gridsan/yilundu/dataset/celebahq/train_im.npy")
+        else:
+            self.data = np.load("/home/gridsan/yilundu/dataset/celebahq_test/arrs_test.npy")
 
     def __len__(self):
-        if self.split == "train":
-            return 29000
-        else:
-            return 1000
+        return self.data.shape[0]
 
-    def read_frame(self, path, item):
-        # if path in self.cache_im:
-        #     im = self.cache_im[path]
-        # else:
-        #     self.cache_im[path] = im
-
-        if self.cache_mask is not None:
-            # cache, cache_mask = self.generate_array()
-            if self.cache_mask[item] == 0:
-                frame = imageio.imread(path)
-                frame = cv2.resize(frame, (self.sidelength, self.sidelength), interpolation=cv2.INTER_AREA)
-                self.cache[item, :self.sidelength, :self.sidelength] = torch.from_numpy(frame.astype(np.uint8))
-                self.cache_mask[item] = 1
-
-            frame = np.array(self.cache[item][:self.sidelength, :self.sidelength])
-        else:
-            frame = imageio.imread(path)
-            # frame = frame.transpose((1, 2, 0))
-
-        # scale = 128 // self.sidelength
-        # frame = frame[::scale, ::scale, :]
         frame = torch.from_numpy(frame).float()
         frame /= 255.
         frame -= 0.5
@@ -624,13 +593,116 @@ class CelebAHQ(torch.utils.data.Dataset):
         return frame
 
     def __getitem__(self, item):
-        if self.split == "train":
-            rgb = self.read_frame(self.im_paths[item], item)
-        else:
-            rgb = self.read_frame(self.im_paths[item+29000], item)
+        rgb = self.data[item]
+        rgb = (torch.Tensor(rgb).float() / 255. - 0.5) * 2
+        rgb = rgb.permute(2, 0, 1)
 
         return {"rgb":rgb}
 
+# class CelebAHQ(torch.utils.data.Dataset):
+#     def __init__(self, sidelength=1024, cache=None, cache_mask=None, split='train', subset=None):
+#         self.name = 'celebahq'
+#         self.channels = 3
+#         # self.im_paths = sorted(glob('/data/vision/billf/scratch/yilundu/dataset/celebahq/data128x128/*.jpg'))
+# 
+#         if split == "train":
+#             self.im_paths = sorted(glob('/home/gridsan/yilundu/dataset/celebahq/class_0/*.jpg'))
+#         else:
+#             self.im_paths = sorted(glob('/home/gridsan/yilundu/dataset/celebahq_test/celebahq_test_images/*.jpg'))
+# 
+#         # self.path = "/datasets01/celebAHQ/081318/imgHQ{:05}.npy"
+#         # self.mgrid = utils.get_mgrid(sidelength, dim=2)
+#         self.sidelength = sidelength
+#         # self.im_paths = sorted(glob('/om2/user/yilundu/datasets/data128x128/*.jpg'))
+# 
+#         if cache is not None:
+#             cache = np.ctypeslib.as_array(cache.get_obj())
+#             cache = cache.reshape(30000, 128, 128, 3)
+#             cache = cache.astype("uint8")
+#             self.cache = torch.from_numpy(cache)
+#         else:
+#             self.cache = cache
+# 
+#         self.im_size = sidelength
+# 
+#         if cache_mask is not None:
+#             cache_mask = np.ctypeslib.as_array(cache_mask.get_obj())
+#             cache_mask = cache_mask.reshape(30000)
+#             cache_mask = cache_mask.astype("uint8")
+#             self.cache_mask = torch.from_numpy(cache_mask)
+#         else:
+#             self.cache_mask = cache_mask
+# 
+#         self.split = split
+# 
+#     def __len__(self):
+#         return len(self.im_paths)
+# 
+#     def read_frame(self, path, item):
+#         # if path in self.cache_im:
+#         #     im = self.cache_im[path]
+#         # else:
+#         #     self.cache_im[path] = im
+# 
+#         if self.cache_mask is not None:
+#             # cache, cache_mask = self.generate_array()
+#             if self.cache_mask[item] == 0:
+#                 # frame = imageio.imread(path)
+#                 frame = Image.open(path)
+#                 frame = frame.convert("RGB")
+#                 frame = np.array(trans_fn.resize(frame, 64, Image.LANCZOS))
+#                 # frame = cv2.resize(frame, (self.sidelength, self.sidelength), interpolation=cv2.INTER_AREA)
+#                 self.cache[item, :self.sidelength, :self.sidelength] = torch.from_numpy(frame.astype(np.uint8))
+#                 self.cache_mask[item] = 1
+# 
+#             frame = np.array(self.cache[item][:self.sidelength, :self.sidelength])
+#         else:
+#             frame = Image.open(path)
+#             frame = frame.convert("RGB")
+#             frame = np.array(trans_fn.resize(frame, 64, Image.LANCZOS))
+#             # frame = frame.transpose((1, 2, 0))
+# 
+#         # scale = 128 // self.sidelength
+#         # frame = frame[::scale, ::scale, :]
+#         frame = torch.from_numpy(frame).float()
+#         frame /= 255.
+#         frame -= 0.5
+#         frame *= 2.
+#         frame = frame.permute(2, 0, 1)
+# 
+#         return frame
+# 
+#     def __getitem__(self, item):
+#         if self.split == "train":
+#             rgb = self.read_frame(self.im_paths[item], item)
+#         else:
+#             rgb = self.read_frame(self.im_paths[item], item)
+# 
+#         return {"rgb":rgb}
+
+
+# class CelebA(torch.utils.data.Dataset):
+#     def __init__(self, sidelength, split='train', subset=None):
+#         transform = Compose([
+#             Resize((sidelength, sidelength)),
+#             CenterCrop((sidelength, sidelength)),
+#             ToTensor(),
+#             Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))
+#         ])
+# 
+#         self.name = 'celeba'
+#         self.img_dataset = torchvision.datasets.CelebA('/om2/user/sitzmann/celeba', split=split, target_type='attr',
+#                                                        transform=transform, target_transform=None, download=True)
+# 
+#         self.channels = 3
+#         self.mgrid = utils.get_mgrid(sidelength, dim=2)
+#         self.sidelength = sidelength
+# 
+#     def __len__(self):
+#         return len(self.img_dataset)
+# 
+#     def __getitem__(self, item):
+#         return {"rgb": self.img_dataset[item][0]}
 
 class CelebA(torch.utils.data.Dataset):
     def __init__(self, sidelength, split='train'):
@@ -755,59 +827,32 @@ class SingleClassImagenet(torch.utils.data.Dataset):
         return {"rgb": self.img_dataset[item][0]}
 
 
-class Trombone(torch.utils.data.Dataset):
-    # combine Spoken Digits dataset with MNIST
-    def __init__(self, split='train', cache=None, cache_wav=None, cache_mask=None):
-        if split == "train":
-            data = np.load("trombone_train.npz")
-            self.ims = data['rgbs']
-            self.ims = self.ims.transpose((0, 3, 1, 2))
-            self.wavs = data['spects']
-        else:
-            data = np.load("trombone_test.npz")
-            self.ims = data['rgbs']
-            self.ims = self.ims.transpose((0, 3, 1, 2))
-            self.wavs = data['spects']
-
-        data = np.load("trombone.npz")
-        mean, std = data['mean'], data['std']
-        self.mean, self.std = mean, std
-
-    def __len__(self):
-        return len(self.ims)
-
-    def __getitem__(self, idx):
-        frame = torch.Tensor(self.ims[idx])
-        wav = self.wavs[idx]
-        wav = (wav - self.mean[:, None]) / (self.std[:, None] * 3)
-        wav = np.clip(wav, -1, 1)
-        waveform = torch.Tensor(wav)
-
-        output = {'rgb': frame, 'audio': waveform, 'label': 1}
-        return output
-
-
 class IMNet(torch.utils.data.Dataset):
     def __init__(self, split='train', sampling=None):
-        self.data_path = os.path.join('/data/vision/billf/scratch/yilundu/dataset/imnet', 'IM-NET/IMSVR/data', 'all_vox256_img_' + split + '.hdf5')
+        # self.data_path = os.path.join('/data/vision/billf/scratch/yilundu/dataset/imnet', 'IM-NET/IMSVR/data', 'all_vox256_img_' + split + '.hdf5')
+        self.data_path = os.path.join('/home/gridsan/yilundu/dataset', 'IM-NET/IMSVR/data', 'all_vox256_img_' + split + '.hdf5')
         self.sampling = sampling
         self.init_model_bool = False
-        # self.init_model()
+        self.split = split
+        self.init_model()
 
 
     def __len__(self):
-        return 35019
+        if self.split == "train":
+            return 35019
+        else:
+            return 8762
 
     def init_model(self):
         data_path = self.data_path
-        self.data_dict = h5py.File(data_path, 'r')
-        self.data_points_int = self.data_dict['points_64'][:]
+        data_dict = h5py.File(data_path, 'r')
+        self.data_points_int = np.array(data_dict['points_64'][:])
         self.data_points = (self.data_points_int.astype(np.float32) + 1) / 128 - 1
         # import pdb
         # pdb.set_trace()
         # print(self.data_points)
-        self.data_values = self.data_dict['values_64'][:]
-        self.data_voxels = self.data_dict['voxels'][:]
+        self.data_values = np.array(data_dict['values_64'][:])
+        self.data_voxels = np.array(data_dict['voxels'][:])
 
         self.init_model_bool = True
 
@@ -825,6 +870,21 @@ class IMNet(torch.utils.data.Dataset):
             occs = occs[idcs]
 
         ctxt_dict = query_dict = {'x':points, 'occupancy':occs, 'idx':torch.Tensor([idx]).long()}
+
+        idx_other = random.randint(0, len(self) - 1)
+
+        voxel_i = self.data_voxels[idx]
+        voxel_j = self.data_voxels[idx_other]
+
+        intersection = (voxel_i * voxel_j).astype(np.float32).sum()
+        union = ((voxel_i + voxel_j) > 0).astype(np.float32).sum()
+        iou = intersection / union
+
+        ctxt_dict['idx_other'] = torch.Tensor([idx_other]).long()
+        query_dict['idx_other'] = torch.Tensor([idx_other]).long()
+        query_dict['mse'] = iou.item()
+        ctxt_dict['mse'] = iou.item()
+
         return {'context':ctxt_dict, 'query':query_dict}, query_dict
 
 
@@ -849,6 +909,28 @@ class ImageNet(torch.utils.data.Dataset):
 
     def __getitem__(self, item):
         return {"rgb": self.img_dataset[item][0]}
+
+
+# class ImageNet(torch.utils.data.Dataset):
+#     def __init__(self, sidelength, split='train'):
+#         transform = Compose([
+#             Resize((sidelength, sidelength)),
+#             CenterCrop((sidelength, sidelength)),
+#             ToTensor(),
+#             Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))
+#         ])
+#
+#         self.img_dataset = torchvision.datasets.ImageNet('/om/data/public/imagenet/images_complete/ilsvrc', split=split,
+#                                                        transform=transform, target_transform=None, download=False)
+#         self.channels = 3
+#         self.mgrid = utils.get_mgrid(sidelength, dim=2)
+#         self.sidelength = sidelength
+#
+#     def __len__(self):
+#         return len(self.img_dataset)
+#
+#     def __getitem__(self, item):
+#         return {"img": self.img_dataset[item][0], "label": self.img_dataset[item][1]}
 
 
 class Cityscapes(torch.utils.data.Dataset):
@@ -980,8 +1062,9 @@ class GeneralizationWrapper(torch.utils.data.Dataset):
         img = self.dataset[0]["rgb"]
         self.sidelength = img.shape[-1]
 
-        subsample = 256 // self.sidelength
-        self.mgrid = utils.get_mgrid((256, 256), dim=len(img.shape)-1, subsample=subsample)
+        # subsample = 256 // self.sidelength
+        # self.mgrid = utils.get_mgrid((256, 256), dim=len(img.shape)-1, subsample=subsample)
+        self.mgrid = utils.get_mgrid((self.im_size, self.im_size), dim=len(img.shape)-1)
 
         self.per_key_channels = {key:value.shape[0] for key, value in self.dataset[0].items()}
         self.padding = padding
@@ -994,7 +1077,10 @@ class GeneralizationWrapper(torch.utils.data.Dataset):
         self.per_key_channels['x'] = 2
 
         self.persistent_mask = persistent_mask
+        # self.mask_dir = os.path.join('/om2/user/sitzmann/', self.dataset.name + f'_masks_{padding}_{sparsity_range[0]}_{sparsity_range[1]}_{self.sidelength}')
         self.mask_dir = os.path.join('/tmp/'+ f'_masks_{padding}_{sparsity_range[0]}_{sparsity_range[1]}_{self.sidelength}')
+        # if not os.path.exists(self.mask_dir):
+        #     os.mkdir(self.mask_dir)
 
         self.context_sparsity = context_sparsity
         self.query_sparsity = query_sparsity
@@ -1028,7 +1114,7 @@ class GeneralizationWrapper(torch.utils.data.Dataset):
             return result_dict
         elif sparsity == 'context':
             mask = np.ones((self.sidelength, self.sidelength)).astype(np.bool)
-            mask[32:96, 32:96] = 0
+            mask[16:48, 16:48] = 0
             result_dict = {key: value[:, mask].transpose(1, 0).contiguous() for key, value in sample_dict.items()}
             nelem = result_dict['rgb'].shape[0]
             rix = np.random.permutation(nelem)[:1024]
@@ -1132,7 +1218,7 @@ class ImplicitGANDataset():
     def __init__(self, real_dataset, fake_dataset):
         self.real_dataset = real_dataset
         self.fake_dataset = fake_dataset
-        self.im_size = self.real_dataset.im_size
+        self.im_size = 64
 
     def __len__(self):
         return len(self.fake_dataset)
@@ -1194,14 +1280,41 @@ class SpokenDigits(torch.utils.data.Dataset):
 
         return {"audio": waveform, "label": self.labels[idx]}
 
-class NSynth(torch.utils.data.Dataset):
+class NSynth(Dataset):
+    def __init__(self, split='train', resample_rate=None, data_path="/tmp"):
+        self.rate = 16000
+        if split == "train":
+            self.wav = np.load("wav_train.npy").squeeze()
+        else:
+            self.wav = np.load("wav_test.npy").squeeze()
+
+    def __len__(self):
+        # return len(self.data_points)
+        return self.wav.shape[0]
+
+    def __getitem__(self, index):
+        waveform = torch.Tensor(self.wav[index])
+        return {"audio": waveform, "label": 1}
+
+
+class NSynthFull(torch.utils.data.Dataset):
     def __init__(self, split='train', resample_rate=None, data_path="/private/home/yilundu/sandbox/function-space-gan/data/nsynth/records/"):
+        # read in TFRecord data for audio waveforms + meta-data
+        # self.data_path = f'{data_path}nsynth_{split}.tfrecord'
+
         data_points = json.load(open("nsynth_{}.json".format(split), 'r'))
+        # print("data path: ", self.data_path)
         self.data_points = data_points
 
         self.wav_files = [self.data_points[i][1]['path'] for i in range(len(self.data_points))]
         self.pitch_codes = [self.data_points[i][1]['pitch'] for i in range(len(self.data_points))]
         self.instrument_labels = [self.data_points[i][1]['instrument_source'] for i in range(len(self.data_points))]
+
+        # extract features
+        # help from: https://stackoverflow.com/questions/37151895/tensorflow-read-all-examples-from-a-tfrecords-at-once
+        data = np.load("nsynth.npz")
+        self.mean = torch.Tensor(data['mean'])
+        self.std = torch.Tensor(data['std'])
 
         # combine meta-data into labels dict per point
         self.labels = [{'instrument_labels': inst_label, 'pitch_code': pitch_code} for
@@ -1223,19 +1336,88 @@ class NSynth(torch.utils.data.Dataset):
         waveform, sample_rate = torchaudio.load(self.wav_files[idx])
         waveform = waveform[:, :16000]
 
-        waveform = torch.Tensor(waveform).view(-1, 1)
+        waveform = Spectrogram()(waveform).squeeze()
+        waveform = waveform[:-1, :].contiguous()
+        waveform = torch.log(waveform)
+
+        waveform = (waveform - self.mean[:, None]) / (self.std[:, None] * 3)
+        waveform = torch.clamp(waveform, -1, 1)
+
+        # transform by resample rate
+        # if self.resample_rate is not None:
+        #     waveform = torchaudio.transforms.Resample(sample_rate, self.resample_rate)(
+        #         waveform[0, :].view(1, -1))
+        #     self.rate = self.resample_rate
+        # else:
+        #     self.rate = sample_rate
+
+        # waveform = torch.Tensor(waveform).view(-1, 1)
 
         return {"audio": waveform, "label": self.labels[idx]}
 
 
+class FaceBed(torch.utils.data.Dataset):
+    def __init__(self, split='train', cache=None, cache_mask=None):
+        # read in TFRecord data for audio waveforms + meta-data
+        # self.data_path = f'{data_path}nsynth_{split}.tfrecord'
+
+        self.ims = sorted(glob("/data/vision/billf/scratch/yilundu/dataset/lsun/lsun/images/*.png"))
+        self.im_size = 64
+
+        cache = np.ctypeslib.as_array(cache.get_obj())
+        cache = cache.reshape(40000, 64, 64, 3)
+        cache = cache.astype("uint8")
+        self.cache = torch.from_numpy(cache)
+        self.im_size = 64
+
+        cache_mask = np.ctypeslib.as_array(cache_mask.get_obj())
+        cache_mask = cache_mask.reshape(40000)
+        cache_mask = cache_mask.astype("uint8")
+        self.cache_mask = torch.from_numpy(cache_mask)
+
+    def __len__(self):
+        return len(self.ims)
+
+    def __getitem__(self, idx):
+        # audio processing help from: https://pytorch.org/tutorials/beginner/audio_preprocessing_tutorial.html
+        import torchaudio  # NOTE: adding here so it doesn't break other envs
+        # to install, run: conda install -c pytorch torchaudio
+
+        if self.cache_mask[idx] == 0:
+            im_path = self.ims[idx]
+            im = imread(im_path)
+            s = im.shape
+            imsize = min(s[0], s[1])
+            ox, oy = (s[0] - imsize) // 2, (s[1] - imsize) // 2
+            im = im[ox:imsize+ox, oy:imsize+oy]
+            im = resize(im, (64, 64), preserve_range=True).astype(np.uint8)
+            self.cache[idx] = torch.from_numpy(im)
+            self.cache_mask[idx] = 1
+
+        im = np.array(self.cache[idx][:64, :64])
+        im = im / 255.
+        im = im - 0.5
+        im = im * 2
+        im = torch.Tensor(im)
+        im = im.permute(2, 0, 1)
+
+        return {"rgb": im}
+
+
 class AudioGeneralizationWrapper(torch.utils.data.Dataset):
-    def __init__(self, dataset, sampling=None, do_pad=True):#context_sparsity, query_sparsity, sparsity_range=(16000,)):
+    def __init__(self, dataset, sparsity, sparsity_range=(10, 20), do_pad=True):#context_sparsity, query_sparsity, sparsity_range=(16000,)):
 
         self.dataset = dataset
+        # self.num_timesteps = dataset[0]["audio"].shape[-1]#[0]#-1]
+        # set to the maximum time duration of an audio signal for padding
+        # self.num_timesteps = np.max([item["audio"].shape[0] for item in self.dataset])
         self.num_timesteps = 16000
         self.mgrid = utils.get_mgrid(int(self.num_timesteps), dim=1)
 
-        self.sampling = sampling
+        self.audio_mgrid = utils.get_mgrid((200, 81), dim=2, subsample=1)
+        self.sparsity = sparsity
+        self.sparsity_range = sparsity_range
+
         self.do_pad = do_pad
 
         self.rate = dataset.rate
@@ -1244,39 +1426,52 @@ class AudioGeneralizationWrapper(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.dataset)
 
-    def __getitem__(self, idx):
+    def sparsify(self, img, mgrid, sparsity, audio=False):
+        result_dict = {"wav": img.permute(1, 2, 0).reshape(-1, img.shape[0])}
+        if sparsity == 'full':
+            result_dict['x'] = mgrid
+            result_dict['mask'] = torch.ones_like(result_dict['x'][...,:1])
+            return result_dict
+        elif sparsity == 'sampled':
+            if self.sparsity_range[0] == self.sparsity_range[1]:
+                subsamples = self.sparsity_range[0]
+            else:
+                subsamples = np.random.randint(self.sparsity_range[0], self.sparsity_range[1])
 
+            # Sample upper_limit pixel idcs at random.
+            lower_rand_idcs = np.random.choice(mgrid.shape[0], size=self.sparsity_range[1], replace=False)
+            upper_rand_idcs = np.random.choice(self.sparsity_range[1], size=subsamples, replace=False)
+
+            flat_dict = result_dict
+            result_dict = {key: value[lower_rand_idcs] for key, value in flat_dict.items()}
+
+            result_dict['mask'] = torch.zeros(self.sparsity_range[1], 1)
+            result_dict['mask'][upper_rand_idcs, 0] = 1.
+            result_dict['x'] = mgrid.view(-1, 2)[lower_rand_idcs, :]
+            return result_dict
+
+    def __getitem__(self, idx):
         sample_dict = self.dataset[idx]
         idx_other = random.randint(0, len(self.dataset) - 1)
         sample_dict_other = self.dataset[idx_other]
 
         dist_mse = (sample_dict_other['audio'].reshape(-1) - sample_dict['audio'].reshape(-1)).pow(2).mean()
 
-        # get flattened audio signal
         wav = sample_dict["audio"]
-        mgrid = self.mgrid
+        mgrid = self.audio_mgrid
+        wav = wav[None, :, :]
+        audio_ctxt_dict = self.sparsify(wav, mgrid, self.sparsity, audio=True)
 
-        if self.do_pad:
-            # zero-pad to desired length
-            num_zeros_pad = self.num_timesteps - wav.shape[0]
-            pad = torch.zeros([num_zeros_pad,1])
-            wav = torch.cat([wav, pad], dim=0)
-            mask = torch.ones(self.num_timesteps, 1)
-            mask[self.num_timesteps - num_zeros_pad:, 0] = 0
+        ctxt_dict = query_dict =  audio_ctxt_dict
 
-        if self.sampling is not None:
-            idcs = sorted(np.random.choice(len(mgrid), size=self.sampling, replace=False))
-            mgrid = mgrid[idcs,:]
-            wav = wav[idcs,:]
-            mask = mask[idcs,:]
-            # correct rate: drop rate according to subsampling of signal
-            if not self.updated_rate_sampling:
-                self.rate = int(self.rate * (self.sampling/self.num_timesteps))
-                self.updated_rate_sampling = True # to avoid updating multiple times
+        ctxt_dict['idx'] = torch.Tensor([idx]).long()
+        query_dict['idx'] = torch.Tensor([idx]).long()
 
-        ctxt_dict = query_dict = {'x':mgrid, 'wav':wav, 'mask':mask,'rate': self.rate, 'idx':torch.Tensor([idx]).long()}
+        ctxt_dict['idx_other'] = torch.Tensor([idx_other]).long()
         query_dict['idx_other'] = torch.Tensor([idx_other]).long()
+
         query_dict['mse'] = dist_mse
+        ctxt_dict['mse'] = dist_mse
 
         return {'context':ctxt_dict, 'query':query_dict}, query_dict
 
@@ -1433,13 +1628,68 @@ class VoxCeleb(torch.utils.data.Dataset):
 class Instrument(torch.utils.data.Dataset):
     # combine Spoken Digits dataset with MNIST
     def __init__(self, split='train', cache=None, cache_wav=None, cache_mask=None):
+        if split == "train":
+            data = np.load("/home/gridsan/yilundu/my_files/function-space-gan/instrument_train.npz")
+            self.ims = data['rgbs']
+            self.ims = self.ims.transpose((0, 3, 1, 2))
+            self.ims = 2 * (((self.ims + 1) / 2.) / 255. - 0.5)
+            self.wavs = data['spects']
+        else:
+            data = np.load("/home/gridsan/yilundu/my_files/function-space-gan/instrument_test.npz")
+            self.ims = data['rgbs']
+            self.wavs = data['spects']
+
+    def __len__(self):
+        return len(self.ims)
+
+    def __getitem__(self, idx):
+        frame = torch.Tensor(self.ims[idx])
+        waveform = torch.Tensor(self.wavs[idx])
+
+        output = {'rgb': frame, 'audio': waveform, 'label': 1}
+        return output
+
+
+class Trombone(torch.utils.data.Dataset):
+    # combine Spoken Digits dataset with MNIST
+    def __init__(self, split='train', cache=None, cache_wav=None, cache_mask=None):
+        if split == "train":
+            data = np.load("/home/gridsan/yilundu/my_files/function-space-gan/trombone_train.npz")
+            self.ims = data['rgbs']
+            self.ims = self.ims.transpose((0, 3, 1, 2))
+            self.wavs = data['spects']
+        else:
+            data = np.load("/home/gridsan/yilundu/my_files/function-space-gan/trombone_test.npz")
+            self.ims = data['rgbs']
+            self.wavs = data['spects']
+
+        data = np.load("trombone.npz")
+        mean, std = data['mean'], data['std']
+        self.mean, self.std = mean, std
+
+    def __len__(self):
+        return len(self.ims)
+
+    def __getitem__(self, idx):
+        frame = torch.Tensor(self.ims[idx])
+        wav = self.wavs[idx]
+        wav = (wav - self.mean[:, None]) / (self.std[:, None] * 3)
+        wav = np.clip(wav, -1, 1)
+        waveform = torch.Tensor(wav)
+
+        output = {'rgb': frame, 'audio': waveform, 'label': 1}
+        return output
+
+class InstrumentFull(torch.utils.data.Dataset):
+    # combine Spoken Digits dataset with MNIST
+    def __init__(self, split='train', cache=None, cache_wav=None, cache_mask=None):
 
         if split == "train":
-            ims = sorted(glob("/data/vision/billf/scratch/yilundu/dataset/suburmp/Sub-URMP/img/train/cello/*.jpg"))
-            wavs = sorted(glob("/data/vision/billf/scratch/yilundu/dataset/suburmp/Sub-URMP/chunk/train/cello/*.wav"))
+            ims = sorted(glob("/home/gridsan/yilundu/dataset/Sub-URMP/img/train/cello/*.jpg"))
+            wavs = sorted(glob("/home/gridsan/yilundu/dataset/Sub-URMP/chunk/train/cello/*.wav"))
         else:
-            ims = sorted(glob("/data/vision/billf/scratch/yilundu/dataset/suburmp/Sub-URMP/img/validation/cello/*.jpg"))
-            wavs = sorted(glob("/data/vision/billf/scratch/yilundu/dataset/suburmp/Sub-URMP/chunk/validation/cello/*.wav"))
+            ims = sorted(glob("/home/gridsan/yilundu/dataset/Sub-URMP/img/validation/cello/*.jpg"))
+            wavs = sorted(glob("/home/gridsan/yilundu/dataset/Sub-URMP/chunk/validation/cello/*.wav"))
         self.ims = ims
         self.wavs = wavs
 
@@ -1669,17 +1919,68 @@ class AVGeneralizationWrapper(torch.utils.data.Dataset):
 
         return {'context':ctxt_dict, 'query':query_dict}, query_dict
 
+def map_instrument_path(args):
+    audio_path, im_path, i = args
+    print(i)
+    frame = imageio.imread(im_path)
+    frame = frame[:, 100:1180, :]
+    frame = cv2.resize(frame, (128, 128), interpolation=cv2.INTER_AREA) / 255.
+    frame = np.array(frame)
+    frame = (frame - 0.5) * 2.
+    waveform, sample_rate = torchaudio.load(audio_path)
+    waveform = torchaudio.transforms.Resample(sample_rate, 16000)(waveform).permute(1, 0).contiguous()
+    waveform = waveform[None, :, 0]
+    waveform = Spectrogram()(waveform).squeeze()
+    waveform = waveform[:-1, :].contiguous()
+    waveform = torch.log(waveform)
+
+    return np.array(waveform), np.array(frame)
+
+
 if __name__ == "__main__":
     # dataset = VoxCeleb()
     # dataset[2]
+    # dataset = IMNet('train')
+    # data = dataset[0]
+    # import pdb
+    # pdb.set_trace()
+    # print(data)
 
-    dataset = Instrument()
-    spects = []
-    for i in range(1000):
-        spect = dataset[i]['audio']
-        spects.append(spect)
+    #dataset = NSynth(split='test')
+    # import pdb
+    # pdb.set_trace()
+    # print(dataset[0])
+    # spects = []
+    # for i in tqdm(range(1000)):
+    #     spect = dataset[i]['audio']
+    #     spects.append(spect)
 
-    spects = torch.stack(spects, dim=0)
-    import pdb
-    pdb.set_trace()
-    print(spects)
+    # spects = torch.stack(spects, dim=0)
+    pool = Pool()
+
+    ims = sorted(glob("/home/gridsan/yilundu/dataset/Sub-URMP/img/train/trombone/*.jpg"))
+    wavs = sorted(glob("/home/gridsan/yilundu/dataset/Sub-URMP/chunk/train/trombone/*.wav"))
+    args = list(zip(wavs, ims, list(range(len(ims)))))
+    ret = pool.map(map_instrument_path, args)
+
+    # data = np.load("instrument.npz")
+    # mean = data['mean'][:-1]
+    # std = data['std'][:-1]
+
+    wavs, frames = zip(*ret)
+    wavs = np.array(wavs)
+    frames = np.array(frames)
+    # wavs = np.clip((wavs[:, :, :] - mean[None, :, None]) / std[None, :, None], -1, 1)
+
+    # dataset = Instrument(split="train")
+
+    # spects = []
+    # rgbs = []
+
+    # for i in tqdm(range(len(dataset))):
+    #     spect = dataset[i]['audio'].numpy()
+    #     rgb = dataset[i]['rgb'].numpy()
+    #     spects.append(spect)
+    #     rgbs.append(rgb)
+
+    np.savez("trombone_train.npz", spects=wavs, rgbs=frames)
