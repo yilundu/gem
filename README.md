@@ -1,6 +1,6 @@
 # Learning Signal-Agnostic Manifolds of Neural Fields
 
-This is the uncleaned code for the paper Learning Signal-Agnostic Manifolds of Neural Fields. The
+This is the uncleaned code for the paper [Learning Signal-Agnostic Manifolds of Neural Fields](https://arxiv.org/abs/2111.06387). The
 cleaned code will be cleaned shortly.
 
 
