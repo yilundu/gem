@@ -4,7 +4,7 @@ This is the uncleaned code for the paper [Learning Signal-Agnostic Manifolds of 
 cleaned code will be cleaned shortly.
 
 <p align="center">
-  <img src="assets/teaser.gif" width="80%"/>
+  <img src="assets/teaser.gif" width="50%"/>
 </p>
 
 
