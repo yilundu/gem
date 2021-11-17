@@ -3,6 +3,10 @@
 This is the uncleaned code for the paper [Learning Signal-Agnostic Manifolds of Neural Fields](https://arxiv.org/abs/2111.06387). The
 cleaned code will be cleaned shortly.
 
+<p align="center">
+  <img src="assets/teaser.gif" width="80%"/>
+</p>
+
 
 ## Downloading Data
 
