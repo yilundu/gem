@@ -64,7 +64,7 @@ def multigpu_train(gpu, opt):
 
     torch.cuda.set_device(gpu)
     model = high_level_models.SirenImplicitGAN(num_items=len(train_generalization_dataset), hidden_layers=3, hidden_features=256,
-                                               in_features=3, out_features=1, amortized=False, latent_dim=1024, sigmoid_output=True, manifold_dim=10, type=opt.type).cuda()
+                                               in_features=3, out_features=1, amortized=False, latent_dim=1024, sigmoid_output=True, manifold_dim=10, type=opt.type, pos_encode=True).cuda()
 
     if opt.checkpoint_path is not None:
         model.load_state_dict(torch.load(opt.checkpoint_path, map_location="cpu")['model_dict'])

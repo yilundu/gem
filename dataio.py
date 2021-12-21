@@ -574,135 +574,23 @@ class CelebAHQ(torch.utils.data.Dataset):
         self.name = 'celebahq'
         self.channels = 3
         self.im_size = 64
-        # self.im_paths = sorted(glob('/data/vision/billf/scratch/yilundu/dataset/celebahq/data128x128/*.jpg'))
 
         if split == "train":
-            self.data = np.load("/home/gridsan/yilundu/dataset/celebahq/train_im.npy")
+            self.im_paths = sorted(glob('/data/vision/billf/scratch/yilundu/dataset/celebahq/celebahq_train/data128x128_small/*.jpg'))
         else:
-            self.data = np.load("/home/gridsan/yilundu/dataset/celebahq_test/arrs_test.npy")
+            self.im_paths = sorted(glob('/data/vision/billf/scratch/yilundu/dataset/celebahq/celebahq_test/*.jpg'))
 
     def __len__(self):
-        return self.data.shape[0]
-
-        frame = torch.from_numpy(frame).float()
-        frame /= 255.
-        frame -= 0.5
-        frame *= 2.
-        frame = frame.permute(2, 0, 1)
-
-        return frame
+        return len(self.im_paths)
 
     def __getitem__(self, item):
-        rgb = self.data[item]
-        rgb = (torch.Tensor(rgb).float() / 255. - 0.5) * 2
+        path = self.im_paths[item]
+        rgb = imread(path)
+        rgb = resize(rgb, (64, 64))
+        rgb = (torch.Tensor(rgb).float() - 0.5) * 2
         rgb = rgb.permute(2, 0, 1)
 
         return {"rgb":rgb}
-
-# class CelebAHQ(torch.utils.data.Dataset):
-#     def __init__(self, sidelength=1024, cache=None, cache_mask=None, split='train', subset=None):
-#         self.name = 'celebahq'
-#         self.channels = 3
-#         # self.im_paths = sorted(glob('/data/vision/billf/scratch/yilundu/dataset/celebahq/data128x128/*.jpg'))
-# 
-#         if split == "train":
-#             self.im_paths = sorted(glob('/home/gridsan/yilundu/dataset/celebahq/class_0/*.jpg'))
-#         else:
-#             self.im_paths = sorted(glob('/home/gridsan/yilundu/dataset/celebahq_test/celebahq_test_images/*.jpg'))
-# 
-#         # self.path = "/datasets01/celebAHQ/081318/imgHQ{:05}.npy"
-#         # self.mgrid = utils.get_mgrid(sidelength, dim=2)
-#         self.sidelength = sidelength
-#         # self.im_paths = sorted(glob('/om2/user/yilundu/datasets/data128x128/*.jpg'))
-# 
-#         if cache is not None:
-#             cache = np.ctypeslib.as_array(cache.get_obj())
-#             cache = cache.reshape(30000, 128, 128, 3)
-#             cache = cache.astype("uint8")
-#             self.cache = torch.from_numpy(cache)
-#         else:
-#             self.cache = cache
-# 
-#         self.im_size = sidelength
-# 
-#         if cache_mask is not None:
-#             cache_mask = np.ctypeslib.as_array(cache_mask.get_obj())
-#             cache_mask = cache_mask.reshape(30000)
-#             cache_mask = cache_mask.astype("uint8")
-#             self.cache_mask = torch.from_numpy(cache_mask)
-#         else:
-#             self.cache_mask = cache_mask
-# 
-#         self.split = split
-# 
-#     def __len__(self):
-#         return len(self.im_paths)
-# 
-#     def read_frame(self, path, item):
-#         # if path in self.cache_im:
-#         #     im = self.cache_im[path]
-#         # else:
-#         #     self.cache_im[path] = im
-# 
-#         if self.cache_mask is not None:
-#             # cache, cache_mask = self.generate_array()
-#             if self.cache_mask[item] == 0:
-#                 # frame = imageio.imread(path)
-#                 frame = Image.open(path)
-#                 frame = frame.convert("RGB")
-#                 frame = np.array(trans_fn.resize(frame, 64, Image.LANCZOS))
-#                 # frame = cv2.resize(frame, (self.sidelength, self.sidelength), interpolation=cv2.INTER_AREA)
-#                 self.cache[item, :self.sidelength, :self.sidelength] = torch.from_numpy(frame.astype(np.uint8))
-#                 self.cache_mask[item] = 1
-# 
-#             frame = np.array(self.cache[item][:self.sidelength, :self.sidelength])
-#         else:
-#             frame = Image.open(path)
-#             frame = frame.convert("RGB")
-#             frame = np.array(trans_fn.resize(frame, 64, Image.LANCZOS))
-#             # frame = frame.transpose((1, 2, 0))
-# 
-#         # scale = 128 // self.sidelength
-#         # frame = frame[::scale, ::scale, :]
-#         frame = torch.from_numpy(frame).float()
-#         frame /= 255.
-#         frame -= 0.5
-#         frame *= 2.
-#         frame = frame.permute(2, 0, 1)
-# 
-#         return frame
-# 
-#     def __getitem__(self, item):
-#         if self.split == "train":
-#             rgb = self.read_frame(self.im_paths[item], item)
-#         else:
-#             rgb = self.read_frame(self.im_paths[item], item)
-# 
-#         return {"rgb":rgb}
-
-
-# class CelebA(torch.utils.data.Dataset):
-#     def __init__(self, sidelength, split='train', subset=None):
-#         transform = Compose([
-#             Resize((sidelength, sidelength)),
-#             CenterCrop((sidelength, sidelength)),
-#             ToTensor(),
-#             Normalize(torch.Tensor([0.5]), torch.Tensor([0.5]))
-#         ])
-# 
-#         self.name = 'celeba'
-#         self.img_dataset = torchvision.datasets.CelebA('/om2/user/sitzmann/celeba', split=split, target_type='attr',
-#                                                        transform=transform, target_transform=None, download=True)
-# 
-#         self.channels = 3
-#         self.mgrid = utils.get_mgrid(sidelength, dim=2)
-#         self.sidelength = sidelength
-# 
-#     def __len__(self):
-#         return len(self.img_dataset)
-# 
-#     def __getitem__(self, item):
-#         return {"rgb": self.img_dataset[item][0]}
 
 class CelebA(torch.utils.data.Dataset):
     def __init__(self, sidelength, split='train'):

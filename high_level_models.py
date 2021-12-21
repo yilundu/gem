@@ -41,8 +41,6 @@ class SirenImplicitGAN(nn.Module):
 
         self.manifold_dim = manifold_dim
 
-        # self.per_element_factor = nn.Parameter(torch.ones((1, self.latent_dim)))
-        # self.per_element_bias = nn.Parameter(torch.zeros((1, self.latent_dim)))
         self.register_parameter('per_element_factor',
                                 nn.Parameter(torch.ones(1, self.latent_dim) + 1e-2 * torch.randn(1, self.latent_dim), requires_grad=True))
         self.register_parameter('per_element_bias',
@@ -503,21 +501,6 @@ class SirenImplicitGAN(nn.Module):
                 out_dict['weights'] = weights
 
                 # Encd of code linear loss
-
-
-            if self.amortized:
-                z += self.encoder(input['context']['rgb'].permute(0,2,1).view(-1, 3, 64, 64))
-
-            if len(z.size()) == 1:
-                z = z[None, :]
-
-            generator_out = self.reference(z)
-            generator_out = generator_out
-            output = self.hypernet(generator_out)
-            out_dict['representation'] = generator_out
-            # out_dict['representations'] = output['representations']
-            out_dict['z'] = z
-            params = output['params']
 
 
             if self.amortized:
