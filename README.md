@@ -5,7 +5,7 @@ cleaned code will be cleaned shortly.
 
 ## Downloading Data
 
-Please utilize the following [link](https://www.dropbox.com/s/601riehyvyw8uz2/data.tar.gz?dl=0) to download the underlying models and data used in the paper and extract it in the root directory. Please download
+Please utilize the following [link](https://www.dropbox.com/s/0yi8nqtxrssljdj/gem_data_release_2.tar.gz?dl=0) to download the underlying models and data used in the paper and extract it in the root directory. Please download
 the 3D shape dataset from [here](https://github.com/czq142857/IM-NET).
 
 
