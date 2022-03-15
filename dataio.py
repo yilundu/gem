@@ -1293,7 +1293,7 @@ class FaceBed(torch.utils.data.Dataset):
 
 
 class AudioGeneralizationWrapper(torch.utils.data.Dataset):
-    def __init__(self, dataset, sparsity, sparsity_range=(10, 20), do_pad=True):#context_sparsity, query_sparsity, sparsity_range=(16000,)):
+    def __init__(self, dataset, sampling, sparsity_range=(10, 20), do_pad=True):#context_sparsity, query_sparsity, sparsity_range=(16000,)):
 
         self.dataset = dataset
         # self.num_timesteps = dataset[0]["audio"].shape[-1]#[0]#-1]
@@ -1303,8 +1303,8 @@ class AudioGeneralizationWrapper(torch.utils.data.Dataset):
         self.mgrid = utils.get_mgrid(int(self.num_timesteps), dim=1)
 
         self.audio_mgrid = utils.get_mgrid((200, 81), dim=2, subsample=1)
-        self.sparsity = sparsity
-        self.sparsity_range = sparsity_range
+        self.sparsity = sampling
+        self.sparsity_range = (sampling, sampling)
 
         self.do_pad = do_pad
 
