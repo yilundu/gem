@@ -78,7 +78,7 @@ def multigpu_train(gpu, opt):
     else:
         print("Please use an already-implemented audio dataset (i.e., nsynth, spoken_digits.")
 
-    train_generalization_dataset = dataio.AudioGeneralizationWrapper(train_audio_dataset, sampling=4096, do_pad=True)
+    train_generalization_dataset = dataio.AudioGeneralizationWrapper(train_audio_dataset, sparsity="sampled", sparsity_range=(1024, 1024), do_pad=True)
     if use_subset:
         num_samples = int(len(train_audio_dataset) * 0.25)
         train_generalization_dataset = torch.utils.data.Subset(train_generalization_dataset, np.arange(num_samples))
@@ -86,7 +86,7 @@ def multigpu_train(gpu, opt):
     train_loader = DataLoader(train_generalization_dataset, shuffle=True, batch_size=opt.batch_size, pin_memory=True,
                               num_workers=4)
 
-    val_generalization_dataset = dataio.AudioGeneralizationWrapper(val_audio_dataset, sampling=None,do_pad=True)
+    val_generalization_dataset = dataio.AudioGeneralizationWrapper(val_audio_dataset, sparsity="sampled", sparsity_range=(1024, 1024),do_pad=True)
     val_loader = DataLoader(val_generalization_dataset, shuffle=True, batch_size=4, pin_memory=True,
                               num_workers=4)
 
