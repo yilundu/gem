@@ -1,12 +1,17 @@
 # Learning Signal-Agnostic Manifolds of Neural Fields
 
-This is the uncleaned code for the paper [Learning Signal-Agnostic Manifolds of Neural Fields](https://arxiv.org/abs/2111.06387). The
-cleaned code will be cleaned shortly.
+This is the uncleaned code for the paper [Learning Signal-Agnostic Manifolds of Neural Fields](https://arxiv.org/abs/2111.06387). The cleaned code will be cleaned shortly.
 
-## Downloading Data
+## Setup Instructions
 
-Please utilize the following [link](https://www.dropbox.com/s/0yi8nqtxrssljdj/gem_data_release_2.tar.gz?dl=0) to download the underlying models and data used in the paper and extract it in the root directory. Please download
-the 3D shape dataset from [here](https://github.com/czq142857/IM-NET).
+Please install packages in the list requirements.txt file:
+
+```
+pip install -r requirements.txt
+```
+
+Next to install the datasets/models used in the paper, download the tar.gz file in the following [link](https://www.dropbox.com/s/0yi8nqtxrssljdj/gem_data_release_2.tar.gz?dl=0) and extract it in the root directory of the repo. Please download
+and extract the all\_vox256\_img\* hdf5 files for ShapeNet from [here](https://github.com/czq142857/IM-NET).
 
 
 ## Demo

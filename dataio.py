@@ -718,7 +718,7 @@ class SingleClassImagenet(torch.utils.data.Dataset):
 class IMNet(torch.utils.data.Dataset):
     def __init__(self, split='train', sampling=None):
         # self.data_path = os.path.join('/data/vision/billf/scratch/yilundu/dataset/imnet', 'IM-NET/IMSVR/data', 'all_vox256_img_' + split + '.hdf5')
-        self.data_path = os.path.join('/home/gridsan/yilundu/dataset', 'IM-NET/IMSVR/data', 'all_vox256_img_' + split + '.hdf5')
+        self.data_path = os.path.join('all_vox256_img_' + split + '.hdf5')
         self.sampling = sampling
         self.init_model_bool = False
         self.split = split
