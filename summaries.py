@@ -240,23 +240,8 @@ def images(model, model_input, gt, model_output, writer, total_steps, prefix='tr
     ax.scatter(y[mask], x[mask], c=color[mask])
     writer.add_figure(prefix + 'conditioning_points', fig, global_step=total_steps)
 
-    # for param_name, init_param, fast_param in zip(model_output['fast_params'].keys(), model.hypo_module.meta_parameters(), model_output['fast_params'].values()):
-    #     writer.add_histogram(prefix + param_name, (init_param - fast_param), total_steps)
     coords = model_input['context']['x']
 
-    if coords.size(0) ==  1 and ('wav' not in gt):
-        model_output = model(model_input, mix_sample=True, render=True)
-        writer.add_histogram(prefix + '_dist_histogram', model_output['dist_hist'], total_steps)
-        # rgb = model_output['rgb'].view(3, 128, 128, 3).permute(0, 3, 1, 2)
-        # rgb = model_output['rgb'].view(3, 256, 256, 3).permute(0, 3, 1, 2)
-        # rgb = model_output['rgb'].view(3, 64, 64, 3).permute(0, 3, 1, 2)
-        nelem = np.prod(model_output['rgb'].size())
-        sidelength = int((nelem / 9) ** 0.5)
-        rgb = model_output['rgb'].view(3, sidelength, sidelength, 3).permute(0, 3, 1, 2)
-        writer.add_image(prefix + '_latent_interpolate', make_grid(rgb, scale_each=False, normalize=True),
-                         global_step=total_steps)
-
-    # summarize_latents(writer, model, model_output, total_steps, prefix=prefix, n_iter_step=10000)
 
     model_log = model_output.get('log', list())
     for type, name, value in model_log:

@@ -33,9 +33,6 @@ p.add_argument('--batch_size', type=int, default=512)
 p.add_argument('--lr', type=float, default=1e-4, help='learning rate. default=5e-5')
 p.add_argument('--num_epochs', type=int, default=40001,
                help='Number of epochs to train for.')
-p.add_argument('--train_sparsity_range', type=int, nargs='+', default=[64**2, 64**2],
-               help='Two integers: lowest number of sparse pixels sampled followed by highest number of sparse'
-                    'pixels sampled when training the conditional neural process')
 
 p.add_argument('--epochs_til_ckpt', type=int, default=100,
                help='Time interval in seconds until checkpoint is saved.')
@@ -71,7 +68,6 @@ def multigpu_train(gpu, opt, shared_dict, shared_mask):
 
     def create_dataloader_callback(sidelength, batch_size):
         train_img_dataset = dataio.CelebAHQ(sidelength, cache=shared_dict, cache_mask=shared_mask)
-        # val_img_dataset = dataio.CelebAHQ(sidelength)
         sparsity_range = min(256, sidelength**2)
         train_generalization_dataset = dataio.GeneralizationWrapper(train_img_dataset, context_sparsity=opt.sparsity,
                                                                     query_sparsity=opt.sparsity,
@@ -89,8 +85,11 @@ def multigpu_train(gpu, opt, shared_dict, shared_mask):
         return train_loader, val_loader
 
     torch.cuda.set_device(gpu)
+
+    # manifold_dim controls the number of nearest neighbors used for computing the linear_lle loss
+    # This is unused with linear_lle is set to be false
     model = high_level_models.SirenImplicitGAN(num_items=num_samples, hidden_layers=3,
-                                               amortized=False, latent_dim=1024, noise=True, pos_encode=True, tanh_output=True, type=opt.type, manifold_dim=10, film=False).cuda()
+                                               latent_dim=1024, tanh_output=True, type=opt.type, manifold_dim=10).cuda()
 
     if opt.checkpoint_path is not None:
         model.load_state_dict(torch.load(opt.checkpoint_path, map_location="cpu")['model_dict'])

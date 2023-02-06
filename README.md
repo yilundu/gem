@@ -15,39 +15,19 @@ and extract the all\_vox256\_img\* hdf5 files for ShapeNet from [here](https://g
 
 
 ## Demo
-
-The underying audiovisual manifold illustrated in the paper may be constructed by utilizing the following command
-
-```
-python experiment_scripts/audiovisual_manifold_interpolate.py --experiment_name=audiovis_demo --checkpoint_path log_root/audiovis_demo/checkpoints/model_70000.pth
-```
-
 ## Training Different Signal Manifolds
 
-Please utilize the following command to train an image manifold
+Please utilize the following command to train an image manifold with the linear_lle loss
 
 ```
-python experiment_scripts/train_autodecoder_multiscale.py --experiment_name=celeba 
+python experiment_scripts/train_autodecoder_multiscale.py --experiment_name=celeba --type linear_lle
 ```
 
-Please utilize the following command to train a 3D shape manifold
+Utilize the following command  to train with just mse
 
 ```
-python experiment_scripts/train_imnet_autodecoder.py --experiment_name=imnet 
+python experiment_scripts/train_autodecoder_multiscale.py --experiment_name=celeba --type none
 ```
-
-Please utilize the following command to train an audio manifold
-
-```
-python experiment_scripts/train_audio_autodecoder.py --experiment_name=audio 
-```
-
-Please utilize the following command to train an audiovisual manifold
-
-```
-python experiment_scripts/train_audiovisual_autodecoder.py --experiment_name=audiovisual
-```
-
 
 ## Citing our Paper
 

@@ -1,7 +1,7 @@
 import h5py
 import config
 from tqdm import tqdm
-import cv2
+# import cv2
 import imageio
 from imageio import imread, imwrite
 from torchvision.datasets import CIFAR10
@@ -20,7 +20,6 @@ import io
 from copy import deepcopy
 from torchvision.datasets.utils import download_file_from_google_drive
 from tqdm.autonotebook import tqdm
-from torchmeta.datasets.utils import get_asset
 import pandas as pd
 import os.path as osp
 

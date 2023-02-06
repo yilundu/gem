@@ -93,63 +93,6 @@ class FCBlock(MetaModule):
         return self.net(input, params=self.get_subdict(params, 'net'))
 
 
-class SineLayer(MetaModule):
-    # See paper sec. 3.2, final paragraph, and supplement Sec. 1.5 for discussion of omega_0.
-
-    # If is_first=True, omega_0 is a frequency factor which simply multiplies the activations before the
-    # nonlinearity. Different signals may require different omega_0 in the first layer - this is a
-    # hyperparameter.
-
-    # If is_first=False, then the weights will be divided by omega_0 so as to keep the magnitude of
-    # activations constant, but boost gradients to the weight matrix (see supplement Sec. 1.5)
-
-    def __init__(self, in_features, out_features, bias=True,
-                 is_first=False, omega_0=30, trainable_omega_0=False, init='custom'):
-        super().__init__()
-        print(omega_0)
-
-        self.trainable_omega_0 = trainable_omega_0
-        if trainable_omega_0:
-            self.omega_0 = nn.Parameter(torch.Tensor([float(omega_0)]))
-        else:
-            self.register_buffer('omega_0', torch.Tensor([float(omega_0)]))
-
-        self.is_first = is_first
-
-        self.in_features = in_features
-        self.linear = BatchLinear(in_features, out_features, bias=bias)
-
-        self.init = init
-        self.init_weights()
-
-    def init_weights(self):
-        print(self.init)
-        if self.init == 'custom':
-            with torch.no_grad():
-                if self.is_first:
-                    self.linear.weight.uniform_(-1 / self.in_features,
-                                                 1 / self.in_features)
-                else:
-                    self.linear.weight.uniform_(-np.sqrt(6 / self.in_features) / self.omega_0.detach().cpu().numpy()[0],
-                                                 np.sqrt(6 / self.in_features) / self.omega_0.detach().cpu().numpy()[0])
-        else:
-            nn.init.xavier_normal_(self.linear.weight)
-
-    def forward_with_film(self, input, gamma, beta):
-        intermed = self.linear(input)
-        if self.init == 'custom':
-            return torch.sin(gamma * self.omega_0 * intermed + beta)
-        else:
-            return torch.sin(intermed)
-
-    def forward(self, input, params=None):
-        intermed = self.linear(input, params=self.get_subdict(params, 'linear'))
-        if self.init == 'custom':
-            return torch.sin(self.omega_0 * intermed)
-        else:
-            return torch.sin(intermed)
-
-
 class PosEncoding(MetaModule):
     def __init__(self, in_features, out_features, omega_0=30):
         super().__init__()
@@ -209,13 +152,6 @@ class PosEncodingReLU(MetaModule):
                 self.audio_net.append(FCLayer(hidden_features, 1))
 
             self.audio_net = nn.ModuleList(self.audio_net)
-
-    # def forward(self, coords, params=None):
-    #     x = coords
-    #
-    #     for i, layer in enumerate(self.net):
-    #         x = layer(x, params=self.get_subdict(params, f'net.{i}'))
-    #     return x
 
 
     def forward(self, coords, audio_coords=None, params=None, share_first_layer=False):
@@ -329,17 +265,6 @@ class Siren(MetaModule):
                 x = layer.forward(x)
 
         return x
-
-    # def forward(self, coords, params=None):
-    #     if params is None:
-    #         params = dict(self.meta_named_parameters())
-    #
-    #     x = coords
-    #
-    #     for i, layer in enumerate(self.net):
-    #         x = layer(x, params=self.get_subdict(params, f'net.{i}'))
-    #
-    #     return x
 
     def forward(self, coords, params=None, share_first_layer=False):
         siren_params = dict(self.meta_named_parameters())
